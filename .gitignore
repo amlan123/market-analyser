@@ -1,0 +1,15 @@
+# Data files
+data/
+*.csv
+*.pkl
+*.parquet
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
