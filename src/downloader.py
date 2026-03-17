@@ -4,11 +4,14 @@ from datetime import datetime, timedelta
 import requests  # For NSE list
 
 def get_nifty50_symbols():
-    """Fetch live Nifty 50 symbols from NSE CSV (free, no key)."""
-    url = 'https://www1.nseindia.com/content/indices/ind_nifty50list.csv'
-    df = pd.read_csv(url)
-    symbols = df['Symbol'].tolist()
-    return [s + '.NS' for s in symbols]  # yfinance format[web:61][web:65]
+    """Hardcoded Nifty 50 symbols (yfinance format)."""
+    symbols = [
+        "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK",
+        "HINDUNILVR", "ITC", "SBIN", "BHARTIARTL", "KOTAKBANK",
+        "LT", "AXISBANK", "ASIANPAINT", "MARUTI", "SUNPHARMA",
+        "TITAN", "ULTRACEMCO", "BAJFINANCE", "WIPRO", "NESTLEIND"
+    ]
+    return [s + ".NS" for s in symbols]
 
 def fetch_data(symbols=None, days=365):
     """Download OHLCV data."""
