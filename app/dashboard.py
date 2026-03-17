@@ -18,8 +18,17 @@ SYMBOLS = [
 
 # Sidebar
 st.sidebar.header("Settings")
-selected = st.sidebar.selectbox("Select Stock", SYMBOLS)
+selected = st.sidebar.multiselect(
+    "Select Stocks to Compare",
+    SYMBOLS,
+    default=["RELIANCE", "TCS", "INFY"]
+)
 days = st.sidebar.slider("Days of History", 30, 365, 180)
+normalize = st.sidebar.checkbox("Normalize to 100 (compare % growth)", value=True)
+
+if not selected:
+    st.warning("Please select at least one stock.")
+    st.stop()
 
 # Fetch data
 @st.cache_data
@@ -27,38 +36,42 @@ def load_data(symbol, days):
     end = datetime.now()
     start = end - timedelta(days=days)
     df = yf.download(symbol + ".NS", start=start, end=end)
-    return df
+    return df["Close"]
 
-with st.spinner("Fetching data..."):
-    df = load_data(selected, days)
+# Metrics row
+st.subheader("Latest Snapshot")
+cols = st.columns(len(selected))
+for i, symbol in enumerate(selected):
+    df = load_data(symbol, days)
+    if not df.empty:
+        latest = float(df.iloc[-1])
+        prev = float(df.iloc[-2])
+        change = (latest - prev) / prev * 100
+        cols[i].metric(symbol, f"₹{latest:.2f}", f"{change:.2f}%")
 
-if df.empty:
-    st.error("No data found. Try another stock.")
-else:
-    # Metrics row
-    latest = df["Close"].iloc[-1]
-    prev = df["Close"].iloc[-2]
-    change = ((latest - prev) / prev * 100)
+# Comparison chart
+st.subheader("Price Comparison Chart")
+fig = go.Figure()
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Latest Close", f"₹{float(latest):.2f}")
-    col2.metric("Day Change", f"{float(change):.2f}%")
-    col3.metric("Volume", f"{int(df['Volume'].iloc[-1]):,}")
+for symbol in selected:
+    df = load_data(symbol, days)
+    if not df.empty:
+        if normalize:
+            series = (df / df.iloc[0]) * 100
+        else:
+            series = df
+        fig.add_trace(go.Scatter(
+            x=series.index,
+            y=series.values.flatten(),
+            name=symbol,
+            mode="lines"
+        ))
 
-    # Price chart
-    st.subheader(f"{selected} Price Chart")
-    fig = go.Figure()
-    fig.add_trace(go.Candlestick(
-        x=df.index,
-        open=df["Open"].squeeze(),
-        high=df["High"].squeeze(),
-        low=df["Low"].squeeze(),
-        close=df["Close"].squeeze(),
-        name=selected
-    ))
-    fig.update_layout(xaxis_rangeslider_visible=False, height=500)
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Raw data
-    if st.checkbox("Show raw data"):
-        st.dataframe(df.tail(20))
+fig.update_layout(
+    height=500,
+    xaxis_title="Date",
+    yaxis_title="Normalized Price (base 100)" if normalize else "Price (₹)",
+    legend_title="Stocks",
+    hovermode="x unified"
+)
+st.plotly_chart(fig, use_container_width=True)
